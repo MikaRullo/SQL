@@ -58,6 +58,7 @@ insert into cliente values(2,'Lucas Rullo','Calle 1',123,'lr@gmail.com',1)
 insert into cliente values(3,'Emma Gomez','Calle 2',456,'emg@gmail.com',2)
 insert into cliente values(4,'Mika Pia','Calle 3',465,'mirp@gmail.com',2)
 insert into cliente values(5,'Berpi stark','Calle 4',782,'bsk@gmail.com',1)
+insert into cliente values(6,'Rena R','Calle 2',222,'el2Presente.com',1)
 
 insert into genero values(01,'Accion')
 insert into genero values(02,'Aventura')
@@ -149,3 +150,73 @@ ALTER TABLE ALQUILER ADD
 CONSTRAINT fkEjemAlq FOREIGN KEY(nroEj, codPel) REFERENCES EJEMPLAR(nroEj, codPel) ON DELETE CASCADE ON UPDATE CASCADE
 
 DELETE FROM Pelicula  WHERE titulo LIKE 'Rey Leon'
+
+
+-- 6 
+
+ALTER TABLE ALQUILER
+DROP CONSTRAINT fkEjem
+
+ALTER TABLE ALQUILER ADD
+CONSTRAINT fkEjem FOREIGN KEY(nroEjem, codPel) REFERENCES EJEMPLAR(nroEjem, codPel) ON DELETE CASCADE ON UPDATE CASCADE
+
+ALTER TABLE ALQUILER
+DROP CONSTRAINT fkClie
+
+ALTER TABLE ALQUILER ADD
+CONSTRAINT fkClie FOREIGN KEY(codCli) REFERENCES Cliente(codCli) ON DELETE CASCADE ON UPDATE CASCADE
+
+CREATE OR ALTER TRIGGER tgBorrarClientes 
+ON Cliente INSTEAD OF DELETE 
+AS
+ (SELECT 1 FROM Alquiler alq WHERE alq.codCli in (SELECT codCli FROM deleted)) 
+            delete from Cliente
+            WHERE codCli IN (SELECT codCli FROM deleted)
+
+SELECT * FROM Cliente
+SELECT * FROM Alquiler
+    DELETE FROM CLIENTE WHERE codCli = 2
+
+-- 7 Elimine las películas de las que no se hayan alquilado ninguna copia.CREATE VIEW ejemNoALqui  
+ as  
+  SELECT nroEjem FROM Ejemplar  
+  EXCEPT  
+  SELECT nroEjem FROM Alquiler
+
+CREATE OR ALTER PROCEDURE P_ELIMINAR_EJEMPLAR_NO_ALQUIL
+AS
+BEGIN 
+
+    DELETE FROM Ejemplar
+    WHERE nroEjem IN (SELECT elim.nroEjem FROM ejemNoALqui elim)
+
+END
+
+EXEC P_ELIMINAR_EJEMPLAR_NO_ALQUIL
+
+SELECT * FROM Ejemplar
+SELECT * FROM ejemNoALqui
+
+
+--8 Elimine los clientes sin alquileres.
+
+create view clienSinAlq as
+select codCli from cliente
+except 
+select codCli from alquiler
+
+
+CREATE OR ALTER PROCEDURE P_Eliminar_Clien_SinAlq
+AS
+BEGIN 
+
+    DELETE FROM cliente
+    WHERE codCli IN (SELECT alq.codCli FROM clienSinAlq alq)
+
+END
+
+
+
+EXEC P_Eliminar_Clien_SinAlq
+
+select *from cliente
