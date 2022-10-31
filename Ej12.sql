@@ -70,7 +70,8 @@ select *from Producto
 2 p_ActualizaStock(): Para los casos que se presenten inconvenientes en los
 datos, se necesita realizar un procedimiento que permita actualizar todos los
 Stock_Actual de los productos, tomando los datos de la entidad Stock. Para ello,
-se utilizará como stock válido la última fecha en la cual se haya cargado el stock.*/
+se utilizará como stock válido la última fecha en la cual se haya cargado el stock.
+*/
 
 /**
     crear vista con fecha maxima
@@ -121,7 +122,8 @@ SELECT * FROM Producto
 
 EXEC p_DepuraProveedor
 
--- 4 p_InsertStock(nro,fecha,prod,cantidad): Realizar un procedimiento que permita agregar stocks de productos. Al realizar la inserción se deberá validar que:SELECT * FROM Stock
+-- 4 p_InsertStock(nro,fecha,prod,cantidad): Realizar un procedimiento que permita agregar stocks de productos. Al realizar la inserción se deberá validar que:
+SELECT * FROM Stock
 
 CREATE OR ALTER PROC p_InsertStock(@nro int, @fecha date, @codProd int, @cantidad int)
 AS
@@ -193,5 +195,102 @@ END
 
 exec p_ListaSinStock
 
+
+-- 7 p_ListaStock(): Realizar un procedimiento que permita generar el siguiente reporte:
+
+--8 p_EliminaSinstock(): Realizar un procedimiento que elimine los productos que no poseen stock.
+
+CREATE VIEW menor
+as
+SELECT sto.fecha, count(sto.codProducto)  as 'men' FROM Stock sto WHERE sto.cantidad > 10 GROUP BY sto.fecha
+
+CREATE VIEW mayor
+as
+SELECT sto.fecha, count(sto.codProducto)  as 'may' FROM Stock sto WHERE sto.cantidad < 10 GROUP BY sto.fecha
+
+CREATE VIEW igual
+as
+SELECT sto.fecha, count(sto.codProducto)  as 'igu' FROM Stock sto WHERE sto.cantidad = 0 GROUP BY sto.fecha
+
+
+CREATE OR ALTER PROC p_ListaStock
+AS 
+BEGIN
+    SELECT stoc.fecha, isnull(men.men, 0) may, isnull(may.may, 0) men, isnull(ig.igu, 0) igual FROM Stock stoc
+    LEFT JOIN menor men ON stoc.fecha = men.fecha
+    LEFT JOIN mayor may ON stoc.fecha = may.fecha
+    LEFT JOIN igual ig ON stoc.fecha = ig.fecha
+    GROUP BY stoc.fecha, men.men, may.may, ig.igu
+END
+SELECT * FROM STOCK
+
+exec p_ListaStock
+
+
+
+create or alter procedure P_EliminaSinstock
+as
+begin
+			delete from producto where stockActual=0
+end
+
+exec P_EliminaSinstock
+
+select *from Producto
+
+
+/*
+8. El siguiente requerimiento consiste en actualizar el campo stock actual de la
+entidad producto, cada vez que se altere una cantidad (positiva o negativa) de ese
+producto. El stock actual reflejará el stock que exista del producto, sabiendo que
+en la entidad Stock se almacenará la cantidad que ingrese o egrese. Además, se
+debe impedir que el campo “Stock actual” pueda ser actualizado manualmente. Si
+esto sucede, se deberá dar marcha atrás a la operación indicando que no está
+permitido.
+*/
+
+CREATE OR ALTER TRIGGER verProd ON Producto AFTER INSERT, DELETE
+AS
+BEGIN
+    DECLARE @STOCK INT
+    SET @STOCK = (SELECT stockActual FROM inserted)
+
+    DECLARE @CODPROD INT 
+    SET  @CODPROD = (SELECT codProducto FROM inserted)
+
+    IF @STOCK IS NOT NULL
+    BEGIN
+        SELECT 'ERROR'
+    END
+END
+
+INSERT INTO Producto VALUES(12, 'Descripcion05', 1, 2)
+
+
+CREATE OR ALTER TRIGGER actProducto ON Stock AFTER INSERT, UPDATE
+AS
+BEGIN
+    DECLARE @NUM INT
+    SET @NUM = (SELECT MAX(nro) FROM Stock) + 1
+    PRINT @NUM
+    IF @NUM != (SELECT nro from inserted )
+        BEGIN
+            DECLARE @COD INT
+            SET @COD = (SELECT CODPRODUCTO FROM inserted)
+
+            DECLARE @STO INT
+            SET @STO = (SELECT cantidad FROM inserted) + (SELECT stockActual FROM Producto WHERE codProducto = @COD)
+
+            UPDATE Producto SET stockActual = @STO WHERE codProducto = @COD
+        END
+    ELSE
+        SELECT 'ERROR NUM'
+END
+
+INSERT INTO Stock VALUES(18, '2022-10-20', 3, 30)
+INSERT INTO Stock VALUES(10, '2022-10-20', 3, -30)
+
+SELECT * FROM Producto 
+SELECT * FROM Stock 
 
 
